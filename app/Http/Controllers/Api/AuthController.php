@@ -5,10 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    private $sekarang;
+    public function __construct()
+    {
+        $now = Carbon::now();
+        $nowind = $now->setTimezone('Asia/Jakarta');
+        $this->sekarang = $nowind->format('ymdHis');
+    }
     //register seller
     public function registerSeller(Request $request)
     {
@@ -27,8 +35,14 @@ class AuthController extends Controller
         ]);
 
         $photo = null;
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo')->store('assets/user', 'public');
+        // if ($request->hasFile('photo')) {
+        //     $photo = $request->file('photo')->store('assets/user', 'public');
+        // }
+        if ($image = $request->file('photo')) {
+            $destinationPath = 'user/';
+            $file_name = $this->sekarang . '.' . request()->photo->getClientOriginalExtension();
+            $image->move($destinationPath, $file_name);
+            $photo = 'user/'.$file_name;
         }
 
         $user = User::create([
@@ -87,6 +101,8 @@ class AuthController extends Controller
     //logout
     public function logout(Request $request)
     {
+        // $user = User::where('id', $request->id)->first();
+        // $user->currentAccessToken()->delete();
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

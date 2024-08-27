@@ -5,9 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Product;
+use Carbon\Carbon;
 
 class ProductController extends Controller
 {
+
+    private $sekarang;
+    public function __construct()
+    {
+        $now = Carbon::now();
+        $nowind = $now->setTimezone('Asia/Jakarta');
+        $this->sekarang = $nowind->format('ymdHis');
+    }
     //index
     public function index(Request $request)
     {
@@ -33,8 +42,12 @@ class ProductController extends Controller
         ]);
 
         $image = null;
-        if ($request->hasFile('image')) {
-            $image = $request->file('image')->store('assets/product', 'public');
+        if ($images = $request->file('image')) {
+            // $image = $request->file('image')->store('assets/product', 'public');
+            $destinationPath = 'products/';
+            $file_name = $this->sekarang . '.' . request()->image->getClientOriginalExtension();
+            $images->move($destinationPath, $file_name);
+            $image = $destinationPath.$file_name;
         }
 
         $product = Product::create([
@@ -58,7 +71,7 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            // 'category_id' => 'required|exists:categories,id',
             'name' => 'required|string',
             'description' => 'string',
             'price' => 'required',
@@ -75,21 +88,36 @@ class ProductController extends Controller
             ], 404);
         }
 
+        if ($image = $request->file('image')) {
+            $destinationPath = 'products/';
+            $file_name = $this->sekarang . '.' . $image->getClientOriginalExtension();
+            $image->move($destinationPath, $file_name);
+    
+            $pathimgold = $product->image;
+            if (file_exists($pathimgold)) {
+                @unlink($pathimgold);
+            }
+            $foto = $destinationPath.$file_name;
+        } else {
+            $foto = $product->image;
+        }
 
         $product->update([
-            'category_id' => $request->category_id,
+            'category_id' => $request->category_id ??  $request->categoryId,
             'name' => $request->name,
             'description' => $request->description,
             'price' => $request->price,
             'stock' => $request->stock,
-
+            'image' => $foto,
         ]);
 
-        if ($request->hasFile('image')) {
-            $image = $request->file('image')->store('assets/product', 'public');
-            $product->image = $image;
-            $product->save();
-        }
+        // if ($request->hasFile('image')) {
+        //     $image = $request->file('image')->store('assets/product', 'public');
+        //     $product->image = $image;
+        //     $product->save();
+        // }
+       
+        
 
         return response()->json([
             'status' => 'success',
@@ -110,6 +138,11 @@ class ProductController extends Controller
             ], 404);
         }
 
+
+        $pathimgold = $product->image;
+        if (file_exists($pathimgold)) {
+            @unlink($pathimgold);
+        }
         $product->delete();
 
         return response()->json([
